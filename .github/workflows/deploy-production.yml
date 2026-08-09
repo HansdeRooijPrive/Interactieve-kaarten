@@ -1,0 +1,80 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout production (main)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: main
+
+      - name: Checkout test (development)
+        uses: actions/checkout@v4
+        with:
+          ref: development
+          path: development
+
+      - name: Assemble site (production at root, test build under /test)
+        run: |
+          mkdir -p dist/test
+          cp main/index.html dist/index.html
+          cp development/index.html dist/test/index.html
+
+      - name: Mark test build as TEST (banner + isolated storage)
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          p = pathlib.Path('dist/test/index.html')
+          html = p.read_text(encoding='utf-8')
+
+          # 1) Opslag-isolatie: test mag nooit dezelfde localStorage-sleutel als
+          #    productie delen (prod en test draaien op dezelfde origin).
+          html = html.replace("'ssTip'", "'ssTip.test'")
+          assert "'ssTip.test'" in html, "Test-opslag isolatie mislukt"
+
+          # 2) Titel + theme-kleur markeren als TEST
+          html = html.replace("<title>Sunny Sailing · Routekaarten</title>",
+                              "<title>TEST · Sunny Sailing · Routekaarten</title>")
+          html = html.replace('theme-color" content="#072d44"',
+                              'theme-color" content="#7a3d00"')
+
+          # 3) Zichtbaar TEST-lint (raakt geen taps: pointer-events:none)
+          banner = ('<div style="position:fixed;top:0;left:50%;'
+                    'transform:translateX(-50%);z-index:99999;background:#c2410c;'
+                    'color:#fff;font:600 11px/1 ui-sans-serif,system-ui,sans-serif;'
+                    'letter-spacing:.15em;padding:5px 12px;border-radius:0 0 8px 8px;'
+                    'pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.35)">TEST</div>')
+          html = html.replace("</body>", banner + "</body>", 1)
+          assert banner in html, "TEST-lint injectie mislukt"
+
+          p.write_text(html, encoding='utf-8')
+          print("Test-build gemarkeerd en geïsoleerd.")
+          PY
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
