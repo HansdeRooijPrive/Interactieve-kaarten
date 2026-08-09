@@ -36,38 +36,42 @@ jobs:
       - name: Assemble site (production at root, test build under /test)
         run: |
           mkdir -p dist/test
-          cp main/index.html dist/index.html
-          cp development/index.html dist/test/index.html
+          # Alle web-bestanden meenemen: index-redirector, version.json en elke app-vX.Y.html
+          rsync -a --exclude='.git' --exclude='.github' --exclude='README.md' --exclude='.gitignore' main/ dist/
+          rsync -a --exclude='.git' --exclude='.github' --exclude='README.md' --exclude='.gitignore' development/ dist/test/
 
       - name: Mark test build as TEST (banner + isolated storage)
         run: |
           python3 - <<'PY'
-          import pathlib
-          p = pathlib.Path('dist/test/index.html')
-          html = p.read_text(encoding='utf-8')
-
-          # 1) Opslag-isolatie: test mag nooit dezelfde localStorage-sleutel als
-          #    productie delen (prod en test draaien op dezelfde origin).
-          html = html.replace("'ssTip'", "'ssTip.test'")
-          assert "'ssTip.test'" in html, "Test-opslag isolatie mislukt"
-
-          # 2) Titel + theme-kleur markeren als TEST
-          html = html.replace("<title>Sunny Sailing · Routekaarten</title>",
-                              "<title>TEST · Sunny Sailing · Routekaarten</title>")
-          html = html.replace('theme-color" content="#072d44"',
-                              'theme-color" content="#7a3d00"')
-
-          # 3) Zichtbaar TEST-lint (raakt geen taps: pointer-events:none)
+          import pathlib, glob
+          files = glob.glob('dist/test/app-*.html')
+          assert files, "Geen app-*.html gevonden in test-build"
           banner = ('<div style="position:fixed;top:0;left:50%;'
                     'transform:translateX(-50%);z-index:99999;background:#c2410c;'
                     'color:#fff;font:600 11px/1 ui-sans-serif,system-ui,sans-serif;'
                     'letter-spacing:.15em;padding:5px 12px;border-radius:0 0 8px 8px;'
                     'pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,.35)">TEST</div>')
-          html = html.replace("</body>", banner + "</body>", 1)
-          assert banner in html, "TEST-lint injectie mislukt"
+          for fp in sorted(files):
+              p = pathlib.Path(fp)
+              html = p.read_text(encoding='utf-8')
 
-          p.write_text(html, encoding='utf-8')
-          print("Test-build gemarkeerd en geïsoleerd.")
+              # 1) Opslag-isolatie: test mag nooit dezelfde localStorage-sleutel als
+              #    productie delen (prod en test draaien op dezelfde origin).
+              html = html.replace("'ssTip'", "'ssTip.test'")
+              assert "'ssTip.test'" in html, f"Test-opslag isolatie mislukt in {fp}"
+
+              # 2) Titel + theme-kleur markeren als TEST
+              html = html.replace("<title>Sunny Sailing · Routekaarten</title>",
+                                  "<title>TEST · Sunny Sailing · Routekaarten</title>")
+              html = html.replace('theme-color" content="#072d44"',
+                                  'theme-color" content="#7a3d00"')
+
+              # 3) Zichtbaar TEST-lint (raakt geen taps: pointer-events:none)
+              html = html.replace("</body>", banner + "</body>", 1)
+              assert banner in html, f"TEST-lint injectie mislukt in {fp}"
+
+              p.write_text(html, encoding='utf-8')
+              print("Test-build gemarkeerd en geïsoleerd:", fp)
           PY
 
       - name: Upload artifact
