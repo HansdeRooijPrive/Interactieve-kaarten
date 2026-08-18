@@ -4,7 +4,8 @@ Mobiele web-app met interactieve routekaarten voor meerdere reizen. Bij het
 openen kies je een bestemming:
 
 - **⛵ Zeilen · Griekenland** — routekaarten voor de Ionische Zee (offline).
-- **🏍️ Rondrit · Schotland** — motorroutes in delen (deel 1: Dinnet → Ardullie).
+- **🏍️ Rondrit · Schotland** — motorroutes in delen (deel 1: Dinnet → Ardullie,
+  deel 2: Ardullie → Durness) met bezienswaardigheden en lunch/koffie-stops.
 
 ## Live (GitHub Pages)
 
@@ -13,21 +14,17 @@ openen kies je een bestemming:
 - **Test** (voorproefje van nieuwe wijzigingen, met "TEST"-lint):
   `https://hansderooijprive.github.io/Interactieve-kaarten/test/`
 
-## Architectuur
+## Opzet
 
-- **`index.html`** — stabiele ingang die **niet wijzigt**. Leest `version.json`
-  en opent automatisch de nieuwste app-versie. Dit is de URL die je op je
-  startscherm zet.
-- **`version.json`** — wijst naar de huidige versie, bv. `app-v1.1.html`.
-- **`app-vX.Y.html`** — de volledige app (één bestand) met de versie-logica:
-  een `APP_VERSIE`-object, een versie-chip en een "Over deze app"-changelog.
-  Elke versie is een eigen bestand → cache-vrij.
+De hele app zit in één bestand: [`index.html`](index.html). De **URL blijft
+altijd gelijk** — het versienummer staat niet in de link maar *in* de app, in
+het `APP_VERSIE`-object (zichtbaar via de versie-chip en "Over deze app").
 
 ### Nieuwe versie uitbrengen
-1. Kopieer de huidige `app-vX.Y.html` naar een hoger versienummer.
-2. Pas de app aan en voeg bovenaan `APP_VERSIE.historie` een regel toe
-   (`soort`: `klein`/`middel`/`groot`) + bump `versie`/`datum`.
-3. Zet `version.json` op het nieuwe bestand.
+1. Wijzig `index.html`.
+2. Werk bovenaan `APP_VERSIE` bij: bump `versie`/`datum` en voeg een regel toe
+   aan `historie` (`soort`: `klein`/`middel`/`groot`).
+3. Commit — dezelfde URL toont automatisch de nieuwe versie.
 
 ## Werkwijze: test → productie
 
