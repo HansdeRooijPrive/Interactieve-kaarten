@@ -53,8 +53,8 @@ jobs:
           assert "'ssTip.test'" in html, "Test-opslag isolatie mislukt"
 
           # 2) Titel + theme-kleur markeren als TEST
-          html = html.replace("<title>Sunny Sailing · Routekaarten</title>",
-                              "<title>TEST · Sunny Sailing · Routekaarten</title>")
+          html = html.replace("<title>Reiskaarten</title>",
+                              "<title>TEST · Reiskaarten</title>")
           html = html.replace('theme-color" content="#072d44"',
                               'theme-color" content="#7a3d00"')
 
