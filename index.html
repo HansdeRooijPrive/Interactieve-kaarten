@@ -889,6 +889,8 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="topbar">
     <button class="back-btn" onclick="showSchotland()">‹ Delen</button>
     <div class="ttl"><b id="scotTitle"></b><span id="scotSub"></span></div>
+    <button class="scot-nav" id="scotPrev" onclick="scotStep(-1)" title="Vorige etappe" aria-label="Vorige etappe">‹</button>
+    <button class="scot-nav" id="scotNext" onclick="scotStep(1)" title="Volgende etappe" aria-label="Volgende etappe">›</button>
   </div>
   <div class="maparea">
     <div id="scotleaf"></div>
@@ -1545,9 +1547,11 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 <script>
 /* =================== VERSIE / CHANGELOG (zelfde logica als km-declaratie) =================== */
 const APP_VERSIE = {
-  versie: "1.6",
+  versie: "1.7",
   datum: "2026-08-19",
   historie: [
+    { versie: "1.7", datum: "2026-08-19", soort: "middel",
+      tekst: "Overzichtskaart van de hele Schotland-route (alle etappes op één kaart, tik een etappe aan) en vorige/volgende-knoppen om snel tussen etappes te wisselen." },
     { versie: "1.6", datum: "2026-08-19", soort: "middel",
       tekst: "Ontbrekende etappe Durness → Gairloch toegevoegd als deel 3 (route nu aaneengesloten; overige delen doorgenummerd). Plus een knop op de kaart om naar je huidige locatie te springen." },
     { versie: "1.5", datum: "2026-08-18", soort: "groot",
@@ -1633,6 +1637,15 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
   .scot-loc:active{background:var(--amber);color:var(--ink);}
   .scot-loc.zoekt{opacity:.55;}
   .scot-here{width:16px;height:16px;border-radius:50%;background:#2b8cff;border:3px solid #fff;box-shadow:0 0 0 4px rgba(43,140,255,.35);}
+  .scot-nav{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);
+    background:rgba(255,255,255,.08);color:var(--paper);font-size:20px;line-height:1;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;}
+  .scot-nav:active{background:rgba(255,255,255,.18);}
+  .scot-nav.uit{opacity:.3;pointer-events:none;}
+  .overzicht-btn{background:linear-gradient(135deg,rgba(242,161,4,.18),rgba(10,58,87,.9));border-color:var(--amber);}
+  .overzicht-btn .idx{background:transparent;border:2px solid var(--amber);font-size:17px;}
+  .ov-num{width:26px;height:26px;border-radius:50%;color:#fff;font:700 13px/26px ui-sans-serif,system-ui,sans-serif;
+    text-align:center;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);}
   .leaflet-popup-content .scot-popup b{font-size:14px;}
   .scot-popup .km{font-weight:700;color:#c2410c;font-size:12px;}
   .scot-popup a{display:inline-block;margin-top:7px;color:#0a58a2;}
@@ -1665,6 +1678,10 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
 
   function renderScotList(){
     var el=document.getElementById('scotList');if(!el)return;el.innerHTML='';
+    var ov=document.createElement('div');ov.className='route-btn overzicht-btn';
+    ov.innerHTML='<div class="idx">🗺️</div><div class="meta"><b>Hele route (overzicht)</b><span>alle '+SCHOTLAND_DELEN.length+' etappes op één kaart</span></div><div class="arr">›</div>';
+    ov.onclick=function(){openScotOverzicht();};
+    el.appendChild(ov);
     SCHOTLAND_DELEN.forEach(function(d,i){
       var b=document.createElement('div');b.className='route-btn';
       b.innerHTML='<div class="idx">'+(i+1)+'</div><div class="meta"><b>'+esc(d.title)+'</b><span>'+esc(d.sub)+' · '+d.pois.length+' punten</span></div><div class="arr">›</div>';
@@ -1673,24 +1690,38 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
     });
   }
 
-  var scotMap=null, scotLine=null, scotMarkers=[], scotCat='all';
+  var scotMap=null, scotLine=null, scotMarkers=[], scotCat='all', scotIdx=-1, scotOverzichtLayers=[];
+  function scotModus(overzicht){
+    var panel=document.querySelector('#scotmap .scot-panel'); if(panel) panel.style.display=overzicht?'none':'';
+    var prev=document.getElementById('scotPrev'), next=document.getElementById('scotNext');
+    if(prev) prev.style.display=overzicht?'none':'';
+    if(next) next.style.display=overzicht?'none':'';
+    if(!overzicht){
+      if(prev) prev.classList.toggle('uit', scotIdx<=0);
+      if(next) next.classList.toggle('uit', scotIdx>=SCHOTLAND_DELEN.length-1);
+    }
+  }
   function openScotDeel(id){
     var d=SCHOTLAND_DELEN.find(function(x){return x.id===id;});if(!d)return;
-    scotCat='all';
+    scotCat='all'; scotIdx=SCHOTLAND_DELEN.findIndex(function(x){return x.id===id;});
     document.getElementById('scotTitle').textContent=d.title;
     document.getElementById('scotSub').textContent=d.sub+' · Schotse Hooglanden';
+    scotModus(false);
     toon('scotmap');
     setTimeout(function(){bouwScotMap(d);},60);
   }
   window.openScotDeel=openScotDeel;
+  window.scotStep=function(dir){
+    var ni=scotIdx+dir; if(ni<0||ni>=SCHOTLAND_DELEN.length) return;
+    openScotDeel(SCHOTLAND_DELEN[ni].id);
+  };
 
   function bouwScotMap(d){
     if(!scotMap){
       scotMap=L.map('scotleaf',{zoomControl:true});
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-bijdragers'}).addTo(scotMap);
     }
-    if(scotLine){scotMap.removeLayer(scotLine);scotLine=null;}
-    scotMarkers.forEach(function(m){scotMap.removeLayer(m);});scotMarkers=[];
+    scotClear();
     scotLine=L.polyline(d.route,{weight:5,opacity:.85,color:'#c2410c'}).addTo(scotMap);
     d.pois.forEach(function(p,i){
       var cat=SCOT_CATS[p.category]||{icon:'📍'};
@@ -1719,6 +1750,43 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
   }
   function filter(c){
     scotMarkers.forEach(function(m){if(c==='all'||m._cat===c){if(!scotMap.hasLayer(m))m.addTo(scotMap);}else{scotMap.removeLayer(m);}});
+  }
+  function scotClear(){
+    if(scotLine){scotMap.removeLayer(scotLine);scotLine=null;}
+    scotMarkers.forEach(function(m){scotMap.removeLayer(m);});scotMarkers=[];
+    scotOverzichtLayers.forEach(function(l){scotMap.removeLayer(l);});scotOverzichtLayers=[];
+  }
+  var OVK=['#c2410c','#0f7a45','#1d6fb8','#8a3ffc','#d98a00','#c81d6b','#0f9b8e','#5a6b1f'];
+  window.openScotOverzicht=function(){
+    scotIdx=-1;
+    document.getElementById('scotTitle').textContent='Hele route';
+    document.getElementById('scotSub').textContent=SCHOTLAND_DELEN.length+' etappes · tik een etappe aan';
+    scotModus(true);
+    toon('scotmap');
+    setTimeout(bouwOverzicht,60);
+  };
+  function bouwOverzicht(){
+    if(!scotMap){
+      scotMap=L.map('scotleaf',{zoomControl:true});
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-bijdragers'}).addTo(scotMap);
+    }
+    scotClear();
+    var alle=[];
+    SCHOTLAND_DELEN.forEach(function(d,i){
+      var kleur=OVK[i%OVK.length];
+      var ln=L.polyline(d.route,{weight:4,opacity:.85,color:kleur});
+      ln.on('click',function(){openScotDeel(d.id);}); ln.addTo(scotMap); scotOverzichtLayers.push(ln);
+      alle=alle.concat(d.route);
+      var mid=d.route[Math.floor(d.route.length/2)];
+      var ic=L.divIcon({className:'',html:'<div class="ov-num" style="background:'+kleur+'">'+(i+1)+'</div>',iconSize:[26,26],iconAnchor:[13,13]});
+      var mk=L.marker(mid,{icon:ic}).addTo(scotMap);
+      mk.on('click',function(){openScotDeel(d.id);});
+      mk.bindTooltip(d.title,{direction:'top'});
+      scotOverzichtLayers.push(mk);
+    });
+    var b=L.latLngBounds(alle);
+    scotMap.fitBounds(b,{padding:[24,24]});
+    setTimeout(function(){scotMap.invalidateSize();scotMap.fitBounds(b,{padding:[24,24]});},90);
   }
   var scotLocMarker=null;
   window.scotLocate=function(){
