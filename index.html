@@ -872,6 +872,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
     </button>
   </div>
   <button class="versie-chip" id="versieChipKies" onclick="toonVersie()" title="Versie-informatie">v—</button>
+  <button class="juridisch-link" onclick="toonJuridisch()">Disclaimer &amp; privacy</button>
 </section>
 
 <!-- ============ SCHOTLAND · DELEN ============ -->
@@ -896,6 +897,7 @@ svg.leaflet-image-layer.leaflet-interactive path {
   <div class="maparea">
     <div id="scotleaf"></div>
     <button class="scot-loc" id="scotLocBtn" onclick="scotLocate()" title="Naar mijn locatie" aria-label="Naar mijn locatie"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></g></svg></button>
+    <button class="scot-gpx" id="scotGpxBtn" onclick="scotDownloadGPX()" title="Download deze route als GPX" aria-label="Download route als GPX">&#x2193; GPX</button>
     <div class="scot-panel"><div class="sp-legend" id="scotLegend"></div></div>
   </div>
 </section>
@@ -1531,6 +1533,12 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
   .vs-item-v{font-weight:700;font-variant-numeric:tabular-nums;min-width:46px;font-size:13.5px;color:var(--amber-deep);}
   .vs-item-t{flex:1;font-size:13.5px;line-height:1.5;}
   .vs-item-meta{font-size:11px;color:#7a8a94;margin-top:3px;}
+  .jur-body h3{font-size:15px;font-weight:700;color:var(--sea-deep);margin:14px 0 4px;}
+  .jur-body h3:first-child{margin-top:2px;}
+  .jur-body p{font-size:13px;line-height:1.55;margin:0 0 8px;color:var(--txt);}
+  .juridisch-link{margin-top:12px;border:0;background:transparent;color:#5d839a;
+    font-family:ui-sans-serif,system-ui,sans-serif;font-size:11.5px;font-weight:600;
+    letter-spacing:.03em;cursor:pointer;text-decoration:underline;padding:2px 0;align-self:flex-start;}
 </style>
 <div id="versieOverlay" class="vs-overlay" onclick="if(event.target===this)sluitVersie()">
   <div class="vs-card">
@@ -1545,12 +1553,34 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
     <div class="vs-log" id="vsLog"></div>
   </div>
 </div>
+<div id="juridischOverlay" class="vs-overlay" onclick="if(event.target===this)sluitJuridisch()">
+  <div class="vs-card">
+    <div class="vs-head">
+      <div><div class="vs-titel">Disclaimer &amp; privacy</div><div class="vs-sub">Interactieve reiskaarten</div></div>
+      <button class="vs-x" onclick="sluitJuridisch()" aria-label="Sluiten">&times;</button>
+    </div>
+    <div class="jur-body">
+      <h3>Disclaimer</h3>
+      <p>De routes en informatie op deze site zijn ter inspiratie. Je rijdt volledig op eigen risico.</p>
+      <p>Controleer altijd zelf de wegomstandigheden, het weer, wegafsluitingen en de plaatselijke verkeersregels, en houd je aan de geldende snelheids- en verkeersregels.</p>
+      <p>Informatie over bezienswaardigheden, horeca, tankstations, E5 en distilleerderijen komt uit openbare bronnen (o.a. OpenStreetMap en open UK-brandstofdata) en is een momentopname. Openingstijden en beschikbaarheid kunnen afwijken; er is geen garantie op juistheid of volledigheid.</p>
+      <p>De maker aanvaardt geen aansprakelijkheid voor schade die voortvloeit uit het gebruik van deze app.</p>
+      <h3>Privacy</h3>
+      <p>Deze app verzamelt geen persoonsgegevens en stuurt niets naar een eigen server.</p>
+      <p>Je locatie wordt alleen gebruikt als je zelf op de locatieknop tikt, uitsluitend in je browser om je op de kaart te tonen. Ze verlaat je toestel niet.</p>
+      <p>Er worden geen tracking-cookies geplaatst. In je browser wordt alleen een kleine voorkeur bewaard (bijvoorbeeld of je een tip al hebt gezien).</p>
+      <p>De kaart wordt geladen via Stadia Maps (EU); kaartgegevens komen van OpenStreetMap. Bij het laden van kaarttegels ziet die kaartdienst je IP-adres, zoals bij elke website. Zie het privacybeleid van Stadia Maps en OpenStreetMap.</p>
+    </div>
+  </div>
+</div>
 <script>
 /* =================== VERSIE / CHANGELOG (zelfde logica als km-declaratie) =================== */
 const APP_VERSIE = {
-  versie: "1.13",
-  datum: "2026-08-21",
+  versie: "1.14",
+  datum: "2026-08-22",
   historie: [
+    { versie: "1.14", datum: "2026-08-22", soort: "klein",
+      tekst: "Nieuwe kaart via Stadia Maps (Outdoors-stijl met reliëf/hoogtelijnen), GPX-download per etappe (voor je navigatie), en een disclaimer & privacyverklaring toegevoegd." },
     { versie: "1.13", datum: "2026-08-21", soort: "klein",
       tekst: "Whisky-distilleerderijen langs de routes toegevoegd (binnen 5 km, bron OpenStreetMap), met een apart 🥃 Whisky-filter." },
     { versie: "1.12", datum: "2026-08-21", soort: "klein",
@@ -1584,7 +1614,9 @@ const APP_VERSIE = {
 function vsFmtDatum(iso){ try{ var d=iso.split('-'); return d[2]+'-'+d[1]+'-'+d[0]; }catch(e){ return iso; } }
 function toonVersie(){ var ov=document.getElementById('versieOverlay'); if(ov) ov.classList.add('open'); }
 function sluitVersie(){ var ov=document.getElementById('versieOverlay'); if(ov) ov.classList.remove('open'); }
-document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVersie(); });
+function toonJuridisch(){ var ov=document.getElementById('juridischOverlay'); if(ov) ov.classList.add('open'); }
+function sluitJuridisch(){ var ov=document.getElementById('juridischOverlay'); if(ov) ov.classList.remove('open'); }
+document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ sluitVersie(); sluitJuridisch(); } });
 (function initVersie(){
   var soortLabel={klein:'Kleine wijziging',middel:'Verbetering',groot:'Grote wijziging'};
   var v='v'+APP_VERSIE.versie;
@@ -1649,6 +1681,12 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
     cursor:pointer;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);box-shadow:0 2px 8px rgba(0,0,0,.35);}
   .scot-loc:active{background:var(--amber);color:var(--ink);}
   .scot-loc.zoekt{opacity:.55;}
+  .scot-gpx{position:absolute;right:12px;top:64px;z-index:7;height:40px;padding:0 14px;border-radius:999px;
+    border:1px solid var(--line);background:rgba(7,45,68,.86);color:#fff;
+    font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;font-weight:600;letter-spacing:.02em;
+    display:flex;align-items:center;cursor:pointer;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px);
+    box-shadow:0 2px 8px rgba(0,0,0,.35);}
+  .scot-gpx:active{background:var(--amber);color:var(--ink);}
   .scot-here{width:16px;height:16px;border-radius:50%;background:#2b8cff;border:3px solid #fff;box-shadow:0 0 0 4px rgba(43,140,255,.35);}
   .scot-nav{flex:0 0 auto;width:36px;height:36px;border-radius:50%;border:1px solid var(--line);
     background:rgba(255,255,255,.08);color:var(--paper);font-size:20px;line-height:1;cursor:pointer;
@@ -1711,6 +1749,7 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
     var panel=document.querySelector('#scotmap .scot-panel'); if(panel) panel.style.display=overzicht?'none':'';
     var prev=document.getElementById('scotPrev'), next=document.getElementById('scotNext');
     var ovb=document.getElementById('scotOverviewBtn'); if(ovb) ovb.style.display=overzicht?'none':'';
+    var gpxb=document.getElementById('scotGpxBtn'); if(gpxb) gpxb.style.display=overzicht?'none':'';
     if(prev) prev.style.display=overzicht?'none':'';
     if(next) next.style.display=overzicht?'none':'';
     if(!overzicht){
@@ -1732,11 +1771,33 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
     var ni=scotIdx+dir; if(ni<0||ni>=SCHOTLAND_DELEN.length) return;
     openScotDeel(SCHOTLAND_DELEN[ni].id);
   };
+  window.scotDownloadGPX=function(){
+    if(scotIdx<0) return;
+    var d=SCHOTLAND_DELEN[scotIdx]; if(!d) return;
+    function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+    var g='<?xml version="1.0" encoding="UTF-8"?>\n';
+    g+='<gpx version="1.1" creator="Interactieve-kaarten" xmlns="http://www.topografix.com/GPX/1/1">\n';
+    g+='<metadata><name>'+esc(d.title)+'</name></metadata>\n';
+    (d.pois||[]).forEach(function(p){
+      g+='<wpt lat="'+p.lat+'" lon="'+p.lon+'"><name>'+esc(p.name)+'</name><desc>'+esc(p.desc||'')+'</desc></wpt>\n';
+    });
+    g+='<trk><name>'+esc(d.title)+'</name><trkseg>\n';
+    (d.route||[]).forEach(function(pt){ g+='<trkpt lat="'+pt[0]+'" lon="'+pt[1]+'"/>\n'; });
+    g+='</trkseg></trk>\n</gpx>\n';
+    try{
+      var blob=new Blob([g],{type:'application/gpx+xml'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');
+      a.href=url; a.download=(d.id||'route')+'.gpx';
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); },200);
+    }catch(e){ alert('Downloaden lukte niet in deze browser.'); }
+  };
 
   function bouwScotMap(d){
     if(!scotMap){
       scotMap=L.map('scotleaf',{zoomControl:true});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-bijdragers'}).addTo(scotMap);
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.png',{maxZoom:20,detectRetina:true,attribution:'&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; OpenStreetMap-bijdragers'}).addTo(scotMap);
     }
     scotClear();
     scotLine=L.polyline(d.route,{weight:5,opacity:.85,color:'#c2410c'}).addTo(scotMap);
@@ -1785,7 +1846,7 @@ document.addEventListener('keydown', function(e){ if(e.key==='Escape') sluitVers
   function bouwOverzicht(){
     if(!scotMap){
       scotMap=L.map('scotleaf',{zoomControl:true});
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap-bijdragers'}).addTo(scotMap);
+      L.tileLayer('https://tiles.stadiamaps.com/tiles/outdoors/{z}/{x}/{y}{r}.png',{maxZoom:20,detectRetina:true,attribution:'&copy; <a href="https://stadiamaps.com/" target="_blank" rel="noopener">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> &copy; OpenStreetMap-bijdragers'}).addTo(scotMap);
     }
     scotClear();
     var alle=[];
